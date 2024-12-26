@@ -1,1 +1,1 @@
-pub(crate) mod subregions;
+pub(crate) mod properties;
