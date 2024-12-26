@@ -45,6 +45,44 @@ fn get_diagonal(x: usize, y: usize) -> [(usize, usize); 4] {
     ]
 }
 
+fn find_sides<T: Eq + Hash + Clone>(
+    grid: &Vec<Vec<T>>,
+    region: &T,
+    diagonal: [(usize, usize); 4],
+    adjacent_same_region: [bool; 4],
+) -> u64 {
+    (0..4).fold(0, |acc, i| -> u64 {
+        if !adjacent_same_region[i] && !adjacent_same_region[(i + 1) % 4] {
+            return acc + 1;
+        } else if adjacent_same_region[i]
+            && adjacent_same_region[(i + 1) % 4]
+            && !is_same_region(&grid, diagonal[i].0, diagonal[i].1, region)
+        {
+            return acc + 1;
+        }
+        acc
+    })
+}
+
+fn find_perimeter<T: Eq + Hash + Clone>(
+    visited: &mut HashSet<(usize, usize)>,
+    queue: &mut VecDeque<(usize, usize)>,
+    adjacent: [(usize, usize); 4],
+    adjacent_same_region: [bool; 4],
+) -> u64 {
+    (0..4).into_iter().fold(0, |acc, i| -> u64 {
+        let pos = adjacent[i];
+        let is_same = adjacent_same_region[i];
+        if !is_same {
+            return acc + 1;
+        } else if !visited.contains(&pos) {
+            queue.push_back(pos);
+            visited.insert(pos);
+        }
+        acc
+    })
+}
+
 pub fn find_properties_of_subregions<T: Eq + Hash + Clone>(
     grid: Vec<Vec<T>>,
 ) -> HashMap<T, RegionProperties> {
@@ -72,34 +110,14 @@ pub fn find_properties_of_subregions<T: Eq + Hash + Clone>(
                 let adjacent_same_region = adjacent
                     .iter()
                     .map(|x| is_same_region(&grid, x.0, x.1, &region))
-                    .collect::<Vec<bool>>();
+                    .collect::<Vec<bool>>()
+                    .try_into()
+                    .unwrap();
 
-                let found_sides = (0..4).fold(0, |acc, i| -> u64 {
-                    if !adjacent_same_region[i] && !adjacent_same_region[(i + 1) % 4] {
-                        return acc + 1;
-                    } else if adjacent_same_region[i]
-                        && adjacent_same_region[(i + 1) % 4]
-                        && !is_same_region(&grid, diagonal[i].0, diagonal[i].1, &region)
-                    {
-                        return acc + 1;
-                    }
-                    acc
-                });
-                region_properties.sides += found_sides;
-
-                let found_perimeter = (0..4).into_iter().fold(0, |acc, i| -> u64 {
-                    let pos = adjacent[i];
-                    let is_same = adjacent_same_region[i];
-                    if !is_same {
-                        return acc + 1;
-                    } else if !visited.contains(&pos) {
-                        queue.push_back(pos);
-                        visited.insert(pos);
-                    }
-                    acc
-                });
-
-                region_properties.perimeter += found_perimeter;
+                region_properties.sides +=
+                    find_sides(&grid, &region, diagonal, adjacent_same_region);
+                region_properties.perimeter +=
+                    find_perimeter::<T>(&mut visited, &mut queue, adjacent, adjacent_same_region);
             }
             properties.insert(region, region_properties);
         }
