@@ -1,1 +1,1 @@
-mod blum_blum_shub;
+pub(crate) mod pseudorandom;

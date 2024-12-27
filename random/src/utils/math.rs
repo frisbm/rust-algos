@@ -57,7 +57,7 @@ mod tests {
     }
 
     #[test]
-    fn test_is_prime(){
+    fn test_is_prime() {
         assert_eq!(is_prime(0), false);
         assert_eq!(is_prime(1), false);
         assert_eq!(is_prime(2), true);
@@ -75,9 +75,9 @@ mod tests {
         assert_eq!(is_prime(546846844672), false);
         assert_eq!(is_prime(546846844673), true);
     }
-    
+
     #[test]
-    fn test_next_prime(){
+    fn test_next_prime() {
         assert_eq!(next_prime(0), 2);
         assert_eq!(next_prime(1), 2);
         assert_eq!(next_prime(2), 3);
