@@ -31,9 +31,9 @@ pub fn is_prime(num: u128) -> bool {
 }
 
 pub fn next_prime(num: u128) -> u128 {
-    let mut i = num + 1;
+    let mut i = num.wrapping_add(1);
     while !is_prime(i) {
-        i += 1;
+        i = i.wrapping_add(1);
     }
     i
 }
