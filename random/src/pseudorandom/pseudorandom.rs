@@ -9,7 +9,7 @@ impl Random {
         let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
         let base = now
             .as_micros()
-            .wrapping_shl(now.as_secs().wrapping_rem(11) as u32);
+            .wrapping_shl(now.as_secs().wrapping_rem(17) as u32);
         let mut s = Self { seed: [0, 0] };
         s.set_seed(base);
         s
@@ -17,11 +17,10 @@ impl Random {
 
     pub fn set_seed(&mut self, seed: u128) {
         let seed = seed ^ seed.wrapping_shl(11);
-        let length = seed.checked_ilog10().unwrap_or(0) + 1;
-
+        let length = seed.checked_ilog2().unwrap_or(0) + 1;
         let mut seed_arr = [0; 2];
         seed_arr[0] = seed.wrapping_shr(length / 2) | 1;
-        seed_arr[1] = seed.wrapping_shr(length) | 1;
+        seed_arr[1] = seed.wrapping_shr(3 * length / 7) | 1;
         self.seed = seed_arr;
     }
 
@@ -69,6 +68,6 @@ mod tests {
         let max = 20;
         let result = rng.random(min, max);
         assert!(result >= min && result < max);
-        assert_eq!(result, 19);
+        assert_eq!(result, 12);
     }
 }
