@@ -1,17 +1,19 @@
-fn angle_between_points(p_0: (usize, usize), p_1: (usize, usize)) -> f64 {
-    let x = p_1.0 as f64 - p_0.0 as f64;
-    let y = p_1.1 as f64 - p_0.1 as f64;
+use std::cmp::Ordering;
+
+fn angle_between_points(p0: (usize, usize), p_1: (usize, usize)) -> f64 {
+    let x = p_1.0 as f64 - p0.0 as f64;
+    let y = p_1.1 as f64 - p0.1 as f64;
     y.atan2(x)
 }
 
-fn distance_between_points(p_0: (usize, usize), p_1: (usize, usize)) -> f64 {
-    let x = p_1.0 as f64 - p_0.0 as f64;
-    let y = p_1.1 as f64 - p_0.1 as f64;
+fn distance_between_points(p0: (usize, usize), p_1: (usize, usize)) -> f64 {
+    let x = p_1.0 as f64 - p0.0 as f64;
+    let y = p_1.1 as f64 - p0.1 as f64;
     (x.powi(2) + y.powi(2)).sqrt()
 }
 
-fn ccw(p_0: (usize, usize), p_1: (usize, usize), p_2: (usize, usize)) -> f64 {
-    let (x_0, y_0) = (p_0.0 as f64, p_0.1 as f64);
+fn ccw(p0: (usize, usize), p_1: (usize, usize), p_2: (usize, usize)) -> f64 {
+    let (x_0, y_0) = (p0.0 as f64, p0.1 as f64);
     let (x_1, y_1) = (p_1.0 as f64, p_1.1 as f64);
     let (x_2, y_2) = (p_2.0 as f64, p_2.1 as f64);
     (x_1 - x_0) * (y_2 - y_0) - (y_1 - y_0) * (x_2 - x_0)
@@ -21,49 +23,55 @@ pub fn convex_hull(points: &Vec<(usize, usize)>) -> Vec<(usize, usize)> {
     if points.len() < 3 {
         return points.clone();
     }
-    let mut p = points.clone();
-    let mut stack: Vec<(usize, usize)> = Vec::with_capacity(p.len());
+    let mut sorted_points = points.to_vec();
+    sorted_points.sort_unstable();
+    let p0 = sorted_points[0];
 
-    p.sort();
-    let p_0 = p[0];
+    sorted_points.sort_by(|&p1, &p2| {
+        let angle_p1 = angle_between_points(p0, p1);
+        let angle_p2 = angle_between_points(p0, p2);
+        let angle_cmp = angle_p1.partial_cmp(&angle_p2).unwrap_or(Ordering::Equal);
 
-    // calculate polar angles and distances from p_0
-    let polarized = p.iter().skip(1).map(|&point| {
-        let angle = angle_between_points(p_0, point);
-        let distance = distance_between_points(p_0, point);
-        (angle, (distance, point))
+        if angle_cmp != Ordering::Equal {
+            return angle_cmp;
+        }
+
+        let distance_p1 = distance_between_points(p0, p1);
+        let distance_p2 = distance_between_points(p0, p2);
+        distance_p1
+            .partial_cmp(&distance_p2)
+            .unwrap_or(Ordering::Equal)
     });
 
-    // sort by angle and distance
-    let mut candidates: Vec<(f64, (f64, (usize, usize)))> =
-        Vec::<(f64, (f64, (usize, usize)))>::with_capacity(p.len());
-    for candidate in polarized {
-        let (angle, (distance, point)) = candidate;
-        let mut add = true;
-        for (i, (a, (d, p))) in candidates.to_owned().iter().enumerate() {
-            if angle.eq(a) {
-                if distance > *d {
-                    candidates.remove(i);
-                } else {
-                    add = false;
-                }
-                break;
+    let mut unique_points = Vec::with_capacity(sorted_points.len());
+    unique_points.push(sorted_points[0]);
+
+    for &point in sorted_points.iter().skip(1) {
+        let last_angle = angle_between_points(p0, *unique_points.last().unwrap());
+        let current_angle = angle_between_points(p0, point);
+
+        if (last_angle - current_angle).abs() > f64::EPSILON {
+            unique_points.push(point);
+        } else {
+            // Replace with the farthest point if the angle is the same
+            let last_distance = distance_between_points(p0, *unique_points.last().unwrap());
+            let current_distance = distance_between_points(p0, point);
+
+            if current_distance > last_distance {
+                *unique_points.last_mut().unwrap() = point;
             }
-        }
-        if add {
-            candidates.push((angle, (distance, point)));
         }
     }
 
-    candidates.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-    candidates.insert(0, (0.0, (0.0, p_0)));
+    let mut stack = Vec::with_capacity(points.len());
+    stack.push(p0);
 
-    for c in candidates {
-        let point = c.1 .1;
-        while stack.len() > 1 && ccw(stack[stack.len() - 2], stack[stack.len() - 1], point) <= 0.0 {
+    for point in unique_points.iter() {
+        while stack.len() > 1 && ccw(stack[stack.len() - 2], stack[stack.len() - 1], *point) <= 0.0
+        {
             stack.pop();
         }
-        stack.push(point);
+        stack.push(*point);
     }
 
     stack.shrink_to_fit();
